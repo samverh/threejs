@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Three.js 3D Model</title>
+    <style>
+      body { margin: 0; }
+      canvas { display: block; }
+    </style>
+  </head>
+  <body>
+    
+    <script type="importmap"> 
+      { "imports": 
+        { "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js", 
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/" 
+        } 
+      } 
+    </script>
+
+    <script type="module">
+      import * as THREE from 'three';
+      import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+      import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    
+      // Set up scene, camera, and renderer
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0xff9999); // Set background to white
+      document.body.appendChild(renderer.domElement);
+    
+      const controls = new OrbitControls(camera, renderer.domElement);
+    
+      // Add lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambientLight);
+    
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      directionalLight.position.set(5, 10, 7.5);
+      scene.add(directionalLight);
+    
+      // Gold material
+      const goldMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xffd700,  // Gold color
+        metalness: 0.9,     // Full metal
+        roughness: 0.3,   // Adjust for shininess
+        reflectivity: 1,  // Reflectivity for a metallic look
+        emission: 0xffe066,
+        emissiveIntensity: 0.9
+      });
+    
+      // Load the 3D model
+      const loader = new GLTFLoader();
+      let modelname = '../models/Giraffe.glb';
+      let model;
+
+      loader.load(
+        modelname,
+        function (gltf) {
+          model = gltf.scene; // Assign the loaded model to the variable
+          model.scale.set(1, 1, 1);  // Adjust the scale if needed
+          model.position.set(0, -2, 0);  // Adjust the position if needed
+    
+          // Apply the gold material to all meshes in the model
+          model.traverse((child) => {
+            if (child.isMesh) {
+              child.material = goldMaterial;
+            }
+          });
+          scene.add(model);
+        },
+        undefined,
+        function (error) {
+          console.error(error);
+          console.log('Failed to load model');
+        }
+      );
+    
+      // Animation loop
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();  // Update the OrbitControls
+        
+        // Rotate the model if it has been loaded
+        if (model) {
+          model.rotation.y += 0.01; // Rotate around the Y axis
+        }
+        
+        renderer.render(scene, camera);
+      }
+      animate();
+    
+      // Position the camera
+      camera.position.z = 4;
+      camera.position.y = 1;
+      camera.position.x = 1;
+    </script>
+    
+  </body>
+</html>
