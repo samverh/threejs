@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Three.js 3D Model</title>
+    <style>
+      body { margin: 0; }
+      canvas { display: block; }
+    </style>
+  </head>
+  <body>
+    
+    <script type="importmap"> 
+      { "imports": 
+        { "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js", 
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/" 
+        } 
+      } 
+    </script>
+
+    <script type="module">
+      import * as THREE from 'three';
+      import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+      import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    
+      // Set up scene, camera, and renderer
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0xdfffd8); // Set background
+      document.body.appendChild(renderer.domElement);
+    
+      const controls = new OrbitControls(camera, renderer.domElement);
+    
+      // Add lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambientLight);
+    
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      directionalLight.position.set(5, 10, 7.5);
+      scene.add(directionalLight);
+    
+      // Gold material
+      const goldMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xffd700,  // Gold color
+        metalness: 0.9,     // Full metal
+        roughness: 0.3,   // Adjust for shininess
+        reflectivity: 1,  // Reflectivity for a metallic look
+        emission: 0xffe066,
+        emissiveIntensity: 0.9
+      });
+    
+      // Load the 3D model
+      const loader = new GLTFLoader();
+      let modelname = '../models/Flying saucer.glb';
+      let models = []; // Array to hold multiple models
+
+      let numModels = 25; // Number of models to load
+      let start_position = 0; // Start at the center of the screen
+
+      let previousDirectionRight = true;  // Tracks the direction of the previous model
+
+      // Generate random movement direction vectors (towards bottom corners)
+      function getRandomMovementVector() {
+        // Alternate direction between left (-1 to 0) and right (0 to 1)
+  const directionX = previousDirectionRight ? (Math.random() * 1) : -(Math.random() * 1); 
+  previousDirectionRight = !previousDirectionRight;  // Flip the direction for the next model
+
+        const directionY = -0.8;  // Always move down
+        const directionZ = Math.random() < 0.5 ? -0.5 : 0.5;  // Slight depth variation
+        return { directionX, directionY, directionZ };
+      }
+
+      // Function to load and clone multiple models with a delay
+      function loadModelWithDelay(delay, index) {
+        setTimeout(() => {
+          loader.load(
+            modelname,
+            function (gltf) {
+              let clonedModel = gltf.scene.clone();  // Clone the loaded model
+              clonedModel.scale.set(0.1, 0.1, 0.1);  // Adjust the scale if needed
+              
+              // Initialize model at the center of the scene
+              clonedModel.position.set(start_position, start_position, start_position);
+              
+              // Assign random movement vector (downwards towards bottom corners)
+              const movementVector = getRandomMovementVector();
+              clonedModel.userData = movementVector; // Store movement vector in userData
+              
+              models.push(clonedModel);  // Add the cloned model to the array
+              scene.add(clonedModel);  // Add each model to the scene
+            },
+            undefined,
+            function (error) {
+              console.error(error);
+              console.log('Failed to load model');
+            }
+          );
+        }, delay * index);  // Apply delay based on the index
+      }
+
+      // Load models with a 1-second delay between each one
+      for (let i = 0; i < numModels; i++) {
+        loadModelWithDelay(1000, i); // 1000 ms = 1 second
+      }
+      let speed = 2
+    
+// Animation loop
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();  // Update the OrbitControls
+  
+  // Move and scale each model in the array
+  models.forEach(model => {
+    const { directionX, directionY, directionZ } = model.userData;
+
+    // Adjust speed based on proximity to the camera (closer means faster)
+    const distanceToCamera = model.position.distanceTo(camera.position);
+    const speedFactor = 1 / distanceToCamera * 90;  // Increase speed when closer to the camera
+    
+    // Move the model in the direction of its movement vector
+    model.position.x += directionX * speed * speedFactor;  // Move towards left or right
+    model.position.y += directionY * speed * speedFactor;  // Always move downwards
+    model.position.z += directionZ * speed * speedFactor;  // Slight Z-axis variation
+
+    // Gradually increase the model's scale to simulate growth
+    const scaleIncrease = 0.002 * speedFactor; // Amount by which to grow on each frame
+    model.scale.x += scaleIncrease;
+    model.scale.y += scaleIncrease;
+    model.scale.z += scaleIncrease;
+
+    // Add rotation to the model
+    // model.rotation.x += 0.01; // Rotate around the X-axis
+    model.rotation.y += 0.01; // Rotate around the Y-axis
+    // model.rotation.z += 0.005; // Slight rotation around the Z-axis
+
+    // Reset the model's position and scale once it moves too far from the center
+    const maxDistance = 1000;
+    if (Math.abs(model.position.x) > maxDistance || Math.abs(model.position.y) > maxDistance || Math.abs(model.position.z) > maxDistance) {
+      model.position.set(start_position, start_position, start_position);  // Reset to the center
+      const newMovementVector = getRandomMovementVector();  // Assign a new random movement direction
+      model.userData = newMovementVector;
+
+      // Reset the scale when the model is repositioned
+      model.scale.set(0.1, 0.1, 0.1);  // Reset to the initial scale
+    }
+  });
+  
+  renderer.render(scene, camera);
+}
+
+
+      animate();
+    
+      // Position the camera
+      camera.position.z = 500;
+      camera.position.y = 0;
+      camera.position.x = 0;
+    </script>
+    
+  </body>
+</html>
